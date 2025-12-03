@@ -85,13 +85,13 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingPermission")
     private fun handleBluetoothConnection() {
         if (!bluetoothHelper.isBluetoothEnabled()) {
-            Toast.makeText(this, "Please enable Bluetooth", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Por favor, habilita el Bluetooth", Toast.LENGTH_SHORT).show()
             return
         }
 
         val deviceName = deviceNameEditText.text.toString()
         if (deviceName.isEmpty() || deviceName == getString(R.string.select_a_device)) {
-            Toast.makeText(this, "Please enter or select a device name", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Ingresa el nombre del Dispositivo", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -100,14 +100,14 @@ class MainActivity : AppCompatActivity() {
 
         if (esp32Device != null) {
             if (bluetoothHelper.connectToDevice(esp32Device, sppUuid)) {
-                Toast.makeText(this, "Connected to $deviceName", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Conectado a $deviceName", Toast.LENGTH_SHORT).show()
                 startListeningForData()
-                bluetoothHelper.sendData("Hello from Android!")
+                bluetoothHelper.sendData("Hola mundo desde Android")
             } else {
-                Toast.makeText(this, "Connection failed", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Conexión fallida. Revisa si el dispositivo es un microcontrolador o acepta comunicación Serial", Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(this, "Device not paired", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Dispositivo sin vincular o no encontrado", Toast.LENGTH_SHORT).show()
         }
     }
 
