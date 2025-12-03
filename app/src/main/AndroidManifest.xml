@@ -21,6 +21,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.BluetoothEsp32">
         <activity
+            android:name=".DeviceInfoActivity"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>

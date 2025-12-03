@@ -2,14 +2,11 @@ package com.example.bluetoothesp32
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.View
-import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.EditText
-import android.widget.Spinner
+import android.widget.AutoCompleteTextView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -18,20 +15,22 @@ import androidx.core.app.ActivityCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import com.example.bluetoothesp32.bluetooth.BluetoothHelper
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var bluetoothHelper: BluetoothHelper
-    private lateinit var connectButton: Button
+    private lateinit var connectButton: MaterialButton
+    private lateinit var deviceInfoButton: MaterialButton
     private lateinit var dataTextView: TextView
-    private lateinit var deviceNameEditText: EditText
-    private lateinit var pairedDevicesSpinner: Spinner
+    private lateinit var deviceNameEditText: TextInputEditText
+    private lateinit var pairedDevicesAutoCompleteTextView: AutoCompleteTextView
 
-    // Standard UUID for SPP (Serial Port Profile)
+    // UUID generica para el servicio SPP (Serial Port Profile)
     private val sppUuid: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
-    // You will need to handle the result of this request in your app
     private val REQUEST_BLUETOOTH_PERMISSIONS = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,68 +45,83 @@ class MainActivity : AppCompatActivity() {
 
         bluetoothHelper = BluetoothHelper(this)
         connectButton = findViewById(R.id.connectButton)
+        deviceInfoButton = findViewById(R.id.deviceInfoButton)
         dataTextView = findViewById(R.id.dataTextView)
         deviceNameEditText = findViewById(R.id.deviceNameEditText)
-        pairedDevicesSpinner = findViewById(R.id.pairedDevicesSpinner)
+        pairedDevicesAutoCompleteTextView = findViewById(R.id.pairedDevicesAutoCompleteTextView)
 
         connectButton.setOnClickListener {
             handleBluetoothConnection()
         }
 
+        deviceInfoButton.setOnClickListener {
+            showDeviceInfo()
+        }
+
         requestBluetoothPermissions()
-        setupPairedDevicesSpinner()
+        setupPairedDevicesMenu()
     }
 
     @SuppressLint("MissingPermission")
-    private fun setupPairedDevicesSpinner() {
+    private fun setupPairedDevicesMenu() {
         val pairedDevices = bluetoothHelper.getPairedDevices()
         val deviceNames = pairedDevices?.map { it.name }?.toMutableList() ?: mutableListOf()
-        deviceNames.add(0, getString(R.string.select_a_device))
 
-        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, deviceNames)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        pairedDevicesSpinner.adapter = adapter
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, deviceNames)
+        pairedDevicesAutoCompleteTextView.setAdapter(adapter)
 
-        pairedDevicesSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                if (position > 0) {
-                    val deviceName = parent.getItemAtPosition(position) as String
-                    deviceNameEditText.setText(deviceName)
-                }
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>) {
-                // Do nothing
-            }
+        pairedDevicesAutoCompleteTextView.setOnItemClickListener { parent, _, position, _ ->
+            val deviceName = parent.adapter.getItem(position) as String
+            deviceNameEditText.setText(deviceName)
         }
     }
 
     @SuppressLint("MissingPermission")
     private fun handleBluetoothConnection() {
         if (!bluetoothHelper.isBluetoothEnabled()) {
-            Toast.makeText(this, "Por favor, habilita el Bluetooth", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.bt_disabled), Toast.LENGTH_SHORT).show()
             return
         }
 
         val deviceName = deviceNameEditText.text.toString()
-        if (deviceName.isEmpty() || deviceName == getString(R.string.select_a_device)) {
-            Toast.makeText(this, "Ingresa el nombre del Dispositivo", Toast.LENGTH_SHORT).show()
+        if (deviceName.isEmpty()) {
+            Toast.makeText(this, getString(R.string.no_device), Toast.LENGTH_SHORT).show()
             return
         }
 
         val pairedDevices: Set<BluetoothDevice>? = bluetoothHelper.getPairedDevices()
-        val esp32Device = pairedDevices?.find { it.name == deviceName }
+        val device = pairedDevices?.find { it.name == deviceName }
 
-        if (esp32Device != null) {
-            if (bluetoothHelper.connectToDevice(esp32Device, sppUuid)) {
-                Toast.makeText(this, "Conectado a $deviceName", Toast.LENGTH_SHORT).show()
+        if (device != null) {
+            if (bluetoothHelper.connectToDevice(device, sppUuid)) {
+                Toast.makeText(this, "${getString(R.string.connected_to)} $deviceName", Toast.LENGTH_SHORT).show()
                 startListeningForData()
-                bluetoothHelper.sendData("Hola mundo desde Android")
+                bluetoothHelper.sendData(getString(R.string.hello_android))
             } else {
-                Toast.makeText(this, "Conexión fallida. Revisa si el dispositivo es un microcontrolador o acepta comunicación Serial", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.conn_failed), Toast.LENGTH_SHORT).show()
             }
         } else {
-            Toast.makeText(this, "Dispositivo sin vincular o no encontrado", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.not_paired), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun showDeviceInfo() {
+        val deviceName = deviceNameEditText.text.toString()
+        if (deviceName.isEmpty()) {
+            Toast.makeText(this, getString(R.string.no_device), Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val pairedDevices: Set<BluetoothDevice>? = bluetoothHelper.getPairedDevices()
+        val device = pairedDevices?.find { it.name == deviceName }
+
+        if (device != null) {
+            val intent = Intent(this, DeviceInfoActivity::class.java)
+            intent.putExtra("btDevice", device)
+            startActivity(intent)
+        } else {
+            Toast.makeText(this, getString(R.string.not_found), Toast.LENGTH_SHORT).show()
         }
     }
 
